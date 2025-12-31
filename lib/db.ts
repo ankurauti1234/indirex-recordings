@@ -1,9 +1,6 @@
+// lib/db.ts
 import "reflect-metadata"
 import { DataSource } from "typeorm"
-import { Channel } from "./entities/Channel"
-import { ChannelGenre } from "./entities/ChannelGenre"
-import { VideoRecording } from "./entities/VideoRecording"
-import { User } from "./entities/User"
 
 const isDev = process.env.NODE_ENV === "development"
 
@@ -14,13 +11,17 @@ export const AppDataSource = new DataSource({
   username: process.env.POSTGRES_USER,
   password: process.env.POSTGRES_PASSWORD,
   database: process.env.POSTGRES_DB,
-  synchronize: isDev, // Set to false in production
+  synchronize: isDev,
   logging: isDev,
-  entities: [Channel, ChannelGenre, VideoRecording, User],
+  // CHANGE THIS: Use glob pattern so all entities are included in build
+  entities: [
+    "src/lib/entities/**/*.ts",           // During development
+    "dist/lib/entities/**/*.js",          // In production (after build)
+  ],
   subscribers: [],
   migrations: [],
   ssl: {
-    rejectUnauthorized: false, // Required for many RDS/managed DBs
+    rejectUnauthorized: false,
   },
 })
 
