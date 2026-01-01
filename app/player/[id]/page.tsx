@@ -47,7 +47,7 @@ export default function PlayerPage({ params }: { params: Promise<{ id: string }>
 
     // Simulate or trigger actual download
     const link = document.createElement("a")
-    link.href = recording.videoUrl
+    link.href = `/api/proxy-video?url=${encodeURIComponent(recording.videoUrl)}`
     link.download = `${recording.channel.name} - ${format(new Date(recording.recordingDate), "yyyy-MM-dd")} ${recording.hour.toString().padStart(2, "0")}_00.mp4`
     document.body.appendChild(link)
     link.click()
@@ -90,7 +90,7 @@ export default function PlayerPage({ params }: { params: Promise<{ id: string }>
         <div className="lg:col-span-2 space-y-6">
           <div className="relative aspect-video bg-black rounded-xl overflow-hidden shadow-2xl border border-muted">
             <video
-              src={recording.videoUrl}
+              src={`/api/proxy-video?url=${encodeURIComponent(recording.videoUrl)}`}
               controls
               autoPlay
               className="w-full h-full object-contain"
