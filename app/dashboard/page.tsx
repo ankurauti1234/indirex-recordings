@@ -293,7 +293,7 @@ function DashboardContent() {
                   <div className="relative aspect-video bg-black/50 overflow-hidden">
                     {/* Subtle video preview underneath */}
                     <video
-                      src={`/api/proxy-video?url=${encodeURIComponent(recording.videoUrl)}`}
+                      src={recording.videoUrl}
                       className="absolute inset-0 w-full h-full object-cover opacity-75"
                       preload="metadata"
                       muted
