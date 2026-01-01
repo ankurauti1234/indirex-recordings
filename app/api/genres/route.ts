@@ -1,21 +1,22 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { NextResponse } from "next/server"
-import { getDb } from "@/lib/db"
-import { ChannelGenre } from "@/lib/entities/ChannelGenre"
+import { NextResponse } from "next/server";
+import { query } from "@/lib/db";
 
 export async function GET() {
   try {
-    const db = await getDb()
+    const { rows } = await query(
+      `SELECT 
+         id,
+         genre_name AS "genreName"
+       FROM channel_genre
+       ORDER BY genre_name ASC`
+    );
 
-    if (!db.hasMetadata(ChannelGenre)) {
-      throw new Error("ChannelGenre metadata not found")
-    }
-
-    const genres = await db.getRepository(ChannelGenre).find({
-      order: { genreName: "ASC" },
-    })
-    return NextResponse.json(genres)
+    return NextResponse.json(rows);
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json(
+      { error: error.message ?? "Failed to fetch genres" },
+      { status: 500 }
+    );
   }
 }

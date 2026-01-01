@@ -1,36 +1,21 @@
-// lib/db.ts
-import "reflect-metadata"
-import { DataSource } from "typeorm"
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { Pool } from "pg";
 
-const isDev = process.env.NODE_ENV === "development"
-
-export const AppDataSource = new DataSource({
-  type: "postgres",
+const pool = new Pool({
   host: process.env.POSTGRES_HOST,
-  port: Number.parseInt(process.env.POSTGRES_PORT || "5432"),
-  username: process.env.POSTGRES_USER,
+  port: Number(process.env.POSTGRES_PORT || 5432),
+  user: process.env.POSTGRES_USER,
   password: process.env.POSTGRES_PASSWORD,
   database: process.env.POSTGRES_DB,
-  synchronize: isDev,
-  logging: isDev,
-  // CHANGE THIS: Use glob pattern so all entities are included in build
-  entities: [
-    "src/lib/entities/**/*.ts",           // During development
-    "dist/lib/entities/**/*.js",          // In production (after build)
-  ],
-  subscribers: [],
-  migrations: [],
-  ssl: {
-    rejectUnauthorized: false,
-  },
-})
+  ssl: { rejectUnauthorized: false },
+});
 
-let initialized = false
-
-export async function getDb() {
-  if (!initialized) {
-    await AppDataSource.initialize()
-    initialized = true
+export async function query(text: string, params?: any[]) {
+  const client = await pool.connect();
+  try {
+    const res = await client.query(text, params);
+    return res;
+  } finally {
+    client.release();
   }
-  return AppDataSource
 }

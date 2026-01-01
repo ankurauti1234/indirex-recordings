@@ -1,62 +1,74 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { type NextRequest, NextResponse } from "next/server"
-import { getDb } from "@/lib/db"
-import { VideoRecording } from "@/lib/entities/VideoRecording"
+import { NextResponse, type NextRequest } from "next/server";
+import { query } from "@/lib/db";
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
-    const channelId = searchParams.get("channelId")
-    const genreId = searchParams.get("genreId")
-    const date = searchParams.get("date")
-    const hour = searchParams.get("hour")
-    const page = Number.parseInt(searchParams.get("page") || "1")
-    const limit = Number.parseInt(searchParams.get("limit") || "12")
-    const skip = (page - 1) * limit
+    const { searchParams } = new URL(request.url);
 
-    const db = await getDb()
+    const channelId = searchParams.get("channelId");
+    const genreId   = searchParams.get("genreId");
+    const date      = searchParams.get("date");
+    const hour      = searchParams.get("hour");
+    const page      = parseInt(searchParams.get("page") || "1", 10);
+    const limit     = parseInt(searchParams.get("limit") || "12", 10);
+    const offset    = (page - 1) * limit;
 
-    if (!db.hasMetadata(VideoRecording)) {
-      throw new Error("VideoRecording metadata not found")
-    }
+    const where: string[] = [];
+    const params: any[] = [];
 
-    const query = db
-      .getRepository(VideoRecording)
-      .createQueryBuilder("recording")
-      .leftJoinAndSelect("recording.channel", "channel")
-      .leftJoinAndSelect("channel.genre", "genre")
+    if (channelId) { params.push(channelId); where.push(`c.id = $${params.length}`); }
+    if (genreId)   { params.push(genreId);   where.push(`g.id = $${params.length}`); }
+    if (date)      { params.push(date);      where.push(`r."recordingDate" = $${params.length}`); }
+    if (hour)      { params.push(+hour);     where.push(`r.hour = $${params.length}`); }
 
-    if (channelId) {
-      query.andWhere("channel.id = :channelId", { channelId })
-    }
+    const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
 
-    if (genreId) {
-      query.andWhere("genre.id = :genreId", { genreId })
-    }
+    const totalRes = await query(
+      `
+      SELECT COUNT(*)::int AS total
+      FROM video_recording r
+      JOIN channel c       ON c.id = r."channelId"
+      JOIN channel_genre g ON g.id = c."genreId"
+      ${whereSql}
+      `,
+      params
+    );
 
-    if (date) {
-      query.andWhere("recording.recordingDate = :date", { date })
-    }
+    const total = totalRes.rows[0]?.total ?? 0;
 
-    if (hour) {
-      query.andWhere("recording.hour = :hour", { hour: Number.parseInt(hour) })
-    }
-
-    const [recordings, total] = await query
-      .orderBy("recording.recordingDate", "DESC")
-      .addOrderBy("recording.hour", "DESC")
-      .skip(skip)
-      .take(limit)
-      .getManyAndCount()
+    const { rows } = await query(
+      `
+      SELECT
+        r.id,
+        r."recordingDate" AS "recordingDate",
+        r.hour,
+        r."videoUrl"      AS "videoUrl",
+        r."channelId"     AS "channelId",
+        c.name            AS "channelName",
+        g.id              AS "genreId",
+        g."genreName"     AS "genreName"
+      FROM video_recording r
+      JOIN channel c       ON c.id = r."channelId"
+      JOIN channel_genre g ON g.id = c."genreId"
+      ${whereSql}
+      ORDER BY r."recordingDate" DESC, r.hour DESC
+      LIMIT ${limit} OFFSET ${offset}
+      `,
+      params
+    );
 
     return NextResponse.json({
-      data: recordings,
+      data: rows,
       total,
       page,
       limit,
       totalPages: Math.ceil(total / limit),
-    })
+    });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json(
+      { error: error.message ?? "Failed to fetch recordings" },
+      { status: 500 }
+    );
   }
 }

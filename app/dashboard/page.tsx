@@ -319,10 +319,10 @@ function DashboardContent() {
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3 min-w-0 flex-1">
                         {/* Channel Logo */}
-                        {recording.channel.logoUrl ? (
+                        {recording.logoUrl ? (
                           <img
-                            src={recording.channel.logoUrl}
-                            alt={recording.channel.name}
+                            src={recording.logoUrl}
+                            alt={recording.channelName}
                             className="size-10 rounded-full shrink-0 border border-border"
                             onError={(e) =>
                               (e.currentTarget.style.display = "none")
@@ -330,17 +330,17 @@ function DashboardContent() {
                           />
                         ) : (
                           <div className="size-8 rounded bg-muted flex items-center justify-center text-xs font-semibold shrink-0">
-                            {recording.channel.name.charAt(0).toUpperCase()}
+                            {recording.channelName.charAt(0).toUpperCase()}
                           </div>
                         )}
 
                         {/* Title and Genre */}
                         <div className="min-w-0 flex-1">
                           <CardTitle className="text-base line-clamp-1">
-                            {recording.channel.name}
+                            {recording.channelName}
                           </CardTitle>
                           <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider mt-0.5">
-                            {recording.channel.genre.genreName}
+                            {recording.genreName}
                           </p>
                         </div>
                       </div>
@@ -376,10 +376,10 @@ function DashboardContent() {
                       className="hover:bg-muted/30 transition-colors group"
                     >
                       <td className="px-6 py-4 font-medium">
-                        {recording.channel.name}
+                        {recording.channelName}
                       </td>
                       <td className="px-6 py-4 text-muted-foreground">
-                        {recording.channel.genre.genreName}
+                        {recording.genreName}
                       </td>
                       <td className="px-6 py-4">
                         {format(

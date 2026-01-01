@@ -1,23 +1,64 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { NextResponse } from "next/server"
-import { getDb } from "@/lib/db"
-import { VideoRecording } from "@/lib/entities/VideoRecording"
+import { NextResponse } from "next/server";
+import { query } from "@/lib/db";
 
-export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(
+  _req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
-    const { id } = await params
-    const db = await getDb()
-    const recording = await db.getRepository(VideoRecording).findOne({
-      where: { id: Number.parseInt(id) },
-      relations: ["channel", "channel.genre"],
-    })
+    const resolved = await params;
+    const raw = resolved?.id;
 
-    if (!recording) {
-      return NextResponse.json({ error: "Recording not found" }, { status: 404 })
+    // Accept only positive integer ids
+    if (!raw || !/^\d+$/.test(raw)) {
+      return NextResponse.json(
+        { error: "Invalid recording id" },
+        { status: 400 }
+      );
     }
 
-    return NextResponse.json(recording)
+    const id = parseInt(raw, 10);
+
+    const { rows } = await query(
+      `
+      SELECT
+        r.id,
+        r."recordingDate",
+        r.hour,
+        r."videoUrl",
+        json_build_object(
+          'id', c.id,
+          'channelId', c.channel_id,
+          'name', c.name,
+          'logoUrl', c.logo_url,
+          'genre', json_build_object(
+            'id', g.id,
+            'genreName', g."genreName"
+          )
+        ) AS channel
+      FROM video_recording r
+      JOIN channel c       ON c.id = r."channelId"
+      JOIN channel_genre g ON g.id = c."genreId"
+      WHERE r.id = $1
+      `,
+      [id]
+    );
+
+    const recording = rows[0];
+
+    if (!recording) {
+      return NextResponse.json(
+        { error: "Recording not found" },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json(recording);
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json(
+      { error: error.message ?? "Failed to fetch recording" },
+      { status: 500 }
+    );
   }
 }

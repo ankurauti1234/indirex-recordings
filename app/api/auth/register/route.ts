@@ -1,40 +1,48 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { NextResponse } from "next/server"
-import { getDb } from "@/lib/db"
-import { User } from "@/lib/entities/User"
-import bcrypt from "bcrypt"
-import { login } from "@/lib/auth"
+import { NextResponse } from "next/server";
+import bcrypt from "bcrypt";
+import { query } from "@/lib/db";
+import { login } from "@/lib/auth";
 
 export async function POST(request: Request) {
   try {
-    const { email, password, name } = await request.json()
-    const db = await getDb()
+    const { email, password, name } = await request.json();
 
-    if (!db.hasMetadata(User)) {
-      throw new Error("User metadata not found. Initialization sequence failed.")
+    // Check if user exists
+    const existing = await query(
+      `SELECT 1 FROM users WHERE email = $1`,
+      [email]
+    );
+
+    if (existing.rowCount != null && existing.rowCount > 0) {
+      return NextResponse.json(
+        { error: "User already exists" },
+        { status: 400 }
+      );
     }
 
-    const userRepository = db.getRepository(User)
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-    const existingUser = await userRepository.findOne({ where: { email } })
-    if (existingUser) {
-      return NextResponse.json({ error: "User already exists" }, { status: 400 })
-    }
+    const { rows } = await query(
+      `INSERT INTO users (email, password, name)
+       VALUES ($1, $2, $3)
+       RETURNING id, email, name`,
+      [email, hashedPassword, name]
+    );
 
-    const hashedPassword = await bcrypt.hash(password, 10)
-    const user = userRepository.create({
-      email,
-      password: hashedPassword,
-      name,
-    })
+    const user = rows[0];
 
-    await userRepository.save(user)
+    // Auto-login after registration
+    await login({ id: user.id, email: user.email, name: user.name });
 
-    // Auto login after registration
-    await login({ id: user.id, email: user.email, name: user.name })
-
-    return NextResponse.json({ success: true, user: { email: user.email, name: user.name } })
+    return NextResponse.json({
+      success: true,
+      user: { email: user.email, name: user.name },
+    });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json(
+      { error: error.message ?? "Registration failed" },
+      { status: 500 }
+    );
   }
 }
