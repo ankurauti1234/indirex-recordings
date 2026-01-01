@@ -27,42 +27,33 @@ jobs:
 
       - name: Setup SSH
         run: |
-          # Create .ssh directory
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
           
-          echo "${{ secrets.JUMP_SERVER_KEY }}" > ~/.ssh/jump_server_key
-          
-          # Fix any potential formatting issues
-          sed -i 's/\r$//' ~/.ssh/jump_server_key
-          
-          # Ensure proper line endings
-          dos2unix ~/.ssh/jump_server_key 2>/dev/null || sed -i 's/\r$//' ~/.ssh/jump_server_key
-          
+          # Decode base64-encoded jump server key
+          echo "${{ secrets.JUMP_SERVER_KEY }}" | base64 -d > ~/.ssh/jump_server_key
           chmod 600 ~/.ssh/jump_server_key
           
           echo "Validating jump server key..."
           ssh-keygen -l -f ~/.ssh/jump_server_key || {
             echo "❌ Jump server key validation failed"
-            echo "Key content preview (first 3 lines):"
-            head -n 3 ~/.ssh/jump_server_key
+            echo "Key file size: $(stat -f%z ~/.ssh/jump_server_key 2>/dev/null || stat -c%s ~/.ssh/jump_server_key)"
+            echo "Key content preview (first 2 lines):"
+            head -n 2 ~/.ssh/jump_server_key
             exit 1
           }
           echo "✅ Jump server key validated"
           
-          echo "${{ secrets.TARGET_EC2_KEY }}" > ~/.ssh/target_ec2_key
-          
-          # Fix any potential formatting issues
-          sed -i 's/\r$//' ~/.ssh/target_ec2_key
-          dos2unix ~/.ssh/target_ec2_key 2>/dev/null || sed -i 's/\r$//' ~/.ssh/target_ec2_key
-          
+          # Decode base64-encoded target EC2 key
+          echo "${{ secrets.TARGET_EC2_KEY }}" | base64 -d > ~/.ssh/target_ec2_key
           chmod 600 ~/.ssh/target_ec2_key
           
           echo "Validating target EC2 key..."
           ssh-keygen -l -f ~/.ssh/target_ec2_key || {
             echo "❌ Target EC2 key validation failed"
-            echo "Key content preview (first 3 lines):"
-            head -n 3 ~/.ssh/target_ec2_key
+            echo "Key file size: $(stat -f%z ~/.ssh/target_ec2_key 2>/dev/null || stat -c%s ~/.ssh/target_ec2_key)"
+            echo "Key content preview (first 2 lines):"
+            head -n 2 ~/.ssh/target_ec2_key
             exit 1
           }
           echo "✅ Target EC2 key validated"
