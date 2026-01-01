@@ -6,13 +6,27 @@ export async function GET(request: Request) {
     return new Response("Missing url parameter", { status: 400 })
   }
 
-  const res = await fetch(target)
+  // Forward Range header (required for seeking)
+  const range = request.headers.get("range") || undefined
+
+  const res = await fetch(target, {
+    headers: range ? { Range: range } : {},
+  })
+
+  const headers = new Headers(res.headers)
+
+  // Ensure correct streaming headers
+  headers.set("Access-Control-Allow-Origin", "*")
+  headers.set("Accept-Ranges", "bytes")
+
+  // Browsers expect 206 when Range is used
+  const status =
+    range && res.status === 200
+      ? 206
+      : res.status
 
   return new Response(res.body, {
-    headers: {
-      "Content-Type": res.headers.get("content-type") || "video/mp4",
-      "Access-Control-Allow-Origin": "*",
-      "Accept-Ranges": "bytes",
-    },
+    status,
+    headers,
   })
 }
